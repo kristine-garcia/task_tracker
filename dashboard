@@ -1,0 +1,238 @@
+<?php
+session_start();
+include 'db.php';
+
+if (!isset($_SESSION['username'])) {
+    header(header: "Location: login.php");
+    exit();
+}
+
+$username = $_SESSION['username'];
+$studentId = isset($_SESSION['studentId']) ? $_SESSION['studentId'] : '';
+$tasks = [];
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (isset($_POST['studentId'])) {
+        $_SESSION['studentId'] = $_POST['studentId'];
+    }
+    if (isset($_POST['taskName']) && isset($_POST['frequency']) && isset($_POST['completionRate']) && isset($_POST['submissionDate'])) {
+        $task = [
+            'taskName' => $_POST['taskName'],
+            'assignedTo' => $username,
+            'frequency' => $_POST['frequency'],
+            'completionRate' => $_POST['completionRate'],
+            'submissionDate' => $_POST['submissionDate']
+        ];
+        $tasksFile = 'tasks.json';
+        $tasks = file_exists(filename: $tasksFile) ? json_decode(json: file_get_contents(filename: $tasksFile), associative: true) : [];
+        $tasks[] = $task;
+        file_put_contents(filename: $tasksFile, data: json_encode(value: $tasks));
+    }
+}
+
+$tasksFile = 'tasks.json';
+if (file_exists(filename: $tasksFile)) {
+    $tasks = json_decode(json: file_get_contents(filename: $tasksFile), associative: true) ?: [];
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task Tracker - Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            background-color: #f1f1f1;
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #fff;
+            padding: 20px;
+            border-right: 2px solid #ddd;
+        }
+
+        .profile-name {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .profile-details {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .header h2 {
+            color: #990000;
+            margin: 0;
+        }
+
+        .logout-btn {
+            background-color: #c0392b;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border: 1px solid #ccc;
+        }
+
+        .task-table th {
+            background-color: #990000;
+            color: white;
+            padding: 10px;
+        }
+
+        .task-table td {
+            padding: 10px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+
+        .task-table input,
+        .task-table select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .add-btn {
+            background-color: #990000;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #studentId {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #333;
+            background-color: #fff;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        #studentId:focus {
+            outline: none;
+            border-color: #990000;
+            box-shadow: 0 0 5px rgba(153, 0, 0, 0.3);
+        }
+
+        #studentId::placeholder {
+            color: #999;
+            opacity: 1;
+        }
+
+        #studentId::-webkit-inner-spin-button,
+        #studentId::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .save-btn {
+            background-color: #990000;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="profile-name">Welcome, <?php echo htmlspecialchars(string: $username); ?></div>
+        <div class="profile-details">
+            <form method="POST" action="">
+                <br><input type="number" id="studentId" name="studentId" placeholder="Student ID"  value="<?php echo htmlspecialchars(string: $studentId); ?>">
+                <button type="submit" class="save-btn">Save</button>
+            </form>
+            <br>Bachelor of Science in Information and Technology<br>
+            <br>AMA University
+        </div>
+    </div>
+
+  <div class="main-content">
+    <div class="header">
+        <h2>Task Tracker</h2>
+        <form action="logout_process.php" method="post">
+            <button type="submit" class="logout-btn">Logout</button>
+        </form>
+    </div>
+
+        <form method="POST" action="">
+            <table class="task-table">
+                <tr>
+                    <th>To Do</th>
+                    <th>Assigned To</th>
+                    <th>Frequency</th>
+                    <th>Completion Rate</th>
+                    <th>Submission Date</th>
+                    <th>Action</th>
+                </tr>
+                <tr>
+                    <td><input type="text" name="taskName" placeholder="Task Name" required></td>
+                    <td><input type="text" value="<?php echo htmlspecialchars(string: $username); ?>" readonly></td>
+                    <td>
+                        <select name="frequency" required>
+                            <option value="">Select</option>
+                            <option value="Daily">Daily</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Once">Once</option>
+                        </select>
+                    </td>
+                    <td><input type="text" name="completionRate" placeholder="%" required></td>
+                    <td><input type="date" name="submissionDate" required></td>
+                    <td><button type="submit" class="add-btn">Add</button></td>
+                </tr>
+                <?php foreach ($tasks as $index => $task): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars(string: $task['taskName']); ?></td>
+                        <td><?php echo htmlspecialchars(string: $task['assignedTo']); ?></td>
+                        <td><?php echo htmlspecialchars(string: $task['frequency']); ?></td>
+                        <td><?php echo htmlspecialchars(string: $task['completionRate']); ?>%</td>
+                        <td><?php echo htmlspecialchars(string: $task['submissionDate']); ?></td>
+                        <td><a href="delete_task.php?index=<?php echo $index; ?>" class="add-btn" style="padding: 7px 12px;">Delete</a></td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        </form>
+    </div>
+</body>
+</html>
